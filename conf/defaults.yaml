@@ -7,6 +7,8 @@ defaults:
   - model: qwen2-7B
   - dataset: scivqa
   - mlflow: scivqa
+  - vector_db: chroma
+  - rag: known_context
   - _self_
 
 metrics:

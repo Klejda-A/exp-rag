@@ -1,0 +1,4 @@
+method: Base
+prompt: ""
+retrieval_only: True
+template_name: ""

@@ -1,0 +1,3 @@
+collection_name: "finqa"
+top_k: 1
+embedding_function: "intfloat/multilingual-e5-large-instruct"

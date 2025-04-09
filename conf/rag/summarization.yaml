@@ -1,0 +1,8 @@
+method: Summarization
+prompt: |
+  You are a helpful assistant. Your task is to summarize the context text that the user provides for better performance in a RAG system.
+  Pay special attention to all the numerical information, especially those contained in tables.
+  The summary does not necessarily have to contain all the numerical information, but from reading the summary, one should be able to tell what information are contained in the text.
+  When you receive the context text from the user, ONLY output the summarized text WITHOUT any extra reasoning or prefix / postfix text.
+retrieval_only: False
+template_name: ./src/g4k/prompts/templates/llama3_finqa_doc.j2

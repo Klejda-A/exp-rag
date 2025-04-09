@@ -39,12 +39,33 @@ class MLFlowConfig:
 
 
 @dataclass
+class VectorDB:
+    """VectorDB configuration."""
+
+    collection_name: str
+    top_k: int
+    embedding_function: str = "default"
+
+
+@dataclass
+class RAGConfig:
+    """RAG configuration."""
+
+    method: str = ""
+    prompt: str | None = None
+    retrieval_only: bool = False
+    template_name: str = ""
+
+
+@dataclass
 class Config:
     """Configuration dataclass for the hydra modules."""
 
     model: Model
     dataset: Dataset
     mlflow: MLFlowConfig
+    vector_db: VectorDB
+    rag: RAGConfig
     metrics: list[Union[str, dict[str, dict[str, str]]]]
     output_folder: str
     template_name: str
