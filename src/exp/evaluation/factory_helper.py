@@ -2,7 +2,16 @@
 
 from encourage.llm import BatchInferenceRunner
 from encourage.metrics import METRIC_REGISTRY, get_metric_from_registry
+from encourage.rag import RAGMethod, RAGMethodInterface
 from omegaconf import DictConfig, OmegaConf
+
+
+def get_rag_method_class(method_name: str) -> type[RAGMethodInterface]:
+    """Get the RAG method class from a string."""
+    try:
+        return RAGMethod(method_name).get_class()  # type: ignore
+    except KeyError:
+        raise ValueError(f"Unsupported RAG method: {method_name}") from None
 
 
 def load_metrics(
