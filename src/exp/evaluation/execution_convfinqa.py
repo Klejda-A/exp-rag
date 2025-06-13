@@ -22,22 +22,6 @@ from exp.utils.flatten_dict import flatten_dict
 
 config_path = str((Path(__file__).parents[3] / "conf").resolve())
 
-def prepare_conversation_history(messages):
-    if len(messages) == 1:
-        return("Question: " + messages[0]["content"])
-    
-    history = "Conversation: "
-    for i in range(len(messages)):
-        if messages[i]["role"] == "user":
-            if i < (len(messages) - 1):
-                history = history + "\n " + messages[i]["content"] + " : "
-            else:
-                history = history + "\n \n Question: " + messages[i]["content"]
-        else:
-            history = history + messages[i]["content"]
-    return(history)
-
-
 def prepare_data(df: pd.DataFrame) -> tuple[list, list]:
     """Prepare data for the inference runner."""
     meta_datas = []
@@ -45,30 +29,22 @@ def prepare_data(df: pd.DataFrame) -> tuple[list, list]:
     for _, row in df.iterrows():
         meta_data = MetaData(
             {
-                "question": row["messages"][-1]["content"],
-                "reference_answer": row["answers"][0],
-                "conversation_history": prepare_conversation_history(row["messages"]),
+                "question": (row["query"].split("Question: ")[1]).split("Answer:")[0],
+                "reference_answer": row["answer"],
+                "conversation_history": (row["query"].split("Conversations: ")[1]).split("Question:")[0],
                 #"ground_truth": list({d["passage_id"]: d["ctx"] for d in reversed(row["ground_truth_ctx"])}.values())[::-1],
             }
         )
         meta_datas.append(meta_data)
+        print(meta_data)
         context = Context.from_documents(
             {
-                "ctxs": list({d["text"] for d in row["ctxs"]}),
+                "ctxs": row["query"].split("Question: ")[0],
             }
         )
         contexts.append(context)
     return meta_datas, contexts
 
-
-def get_dataset_split(name):
-    print(name)
-    if name in ["coqa", "inscit", "topiocqa"]:
-        return("dev")
-    elif name == "convfinqa":
-        return("validation")
-    else:
-        return("test")
 
 @hydra.main(version_base=None, config_path=config_path, config_name="defaults")
 def main(cfg: Config) -> None:
@@ -76,7 +52,7 @@ def main(cfg: Config) -> None:
     # Load dataset from Huggingface
     load_dotenv(".env")
     
-    qa_dataset = load_dataset(cfg.dataset.name, cfg.dataset.subset, split=get_dataset_split(cfg.dataset.subset)).to_pandas()
+    qa_dataset = load_dataset(cfg.dataset.name, split=cfg.dataset.split).to_pandas()
 
     litellm._logging._disable_debugging()
     mlflow.openai.autolog()
@@ -104,10 +80,10 @@ def main(cfg: Config) -> None:
         with mlflow.start_span(name="root"):
 
             meta_datas, contexts = prepare_data(qa_dataset)
-
+            
             prompt_collection = PromptCollection.create_prompts(
                 sys_prompts=sys_prompt,
-                user_prompts=[prepare_conversation_history(row) for row in qa_dataset["messages"]],
+                user_prompts=[(query.split("Conversations: ")[1]).split("Answer:")[0] for query in qa_dataset["query"].tolist()],
                 meta_datas=meta_datas,
                 template_name=cfg.template_name,
             )
