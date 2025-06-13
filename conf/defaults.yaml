@@ -4,9 +4,9 @@ hydra:
     dir: outputs/${now:%y-%m-%d_%H:%M}_${model.model_name_short}
 
 defaults:
-  - model: qwen2-7B
-  - dataset: scivqa
-  - mlflow: scivqa
+  - model: llama3.2
+  - dataset: exprag
+  - mlflow: exprag
   - vector_db: chroma
   - rag: known_context
   - _self_
@@ -15,12 +15,14 @@ metrics:
   - F1
   - BLEU:
       n_grams: 1
+  - GLEU
   - ROUGE:
       rouge_type: rouge1
   - ROUGE:
       rouge_type: rougeL
-  - GeneratedAnswerLength
   - ExactMatch
+  - GeneratedAnswerLength
+  - ReferenceAnswerLength
 
 output_folder: outputs/${now:%y-%m-%d_%H:%M}_${model.model_name_short}
 template_name: ./src/exp/prompts/templates/version_v1.j2
