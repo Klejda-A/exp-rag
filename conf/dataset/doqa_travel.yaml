@@ -1,6 +1,6 @@
 name: nvidia/ChatRAG-Bench
-subset: coqa
-split: dev
+subset: doqa_travel
+split: test
 multiple_answers: true
-input_dir: /ltstorage/home/2alushi/exp-rag/data
+input_dir: /ltstorage/home/2alushi/exp-rag/data/doqa_travel
 sys_prompt_path: ./src/exp/prompts/sys_prompts/rag_prompt_multi_turn_short.txt

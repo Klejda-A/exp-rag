@@ -1,4 +1,0 @@
-name: katebor/SciVQA
-split: validation
-input_dir: /ltstorage/home/strich/scivqa/data
-sys_prompt_path: ./src/scivqa/prompts/sys_prompts/default.txt

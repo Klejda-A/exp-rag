@@ -1,0 +1,6 @@
+name: nvidia/ChatRAG-Bench
+subset: hybridial
+split: test
+multiple_answers: false
+input_dir: /ltstorage/home/2alushi/exp-rag/data/hybridial
+sys_prompt_path: ./src/exp/prompts/sys_prompts/rag_prompt_multi_turn_short.txt
