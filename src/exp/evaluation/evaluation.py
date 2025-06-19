@@ -13,6 +13,7 @@ from exp.evaluation.factory_helper import load_metrics
 from exp.utils.file_manager import FileManager
 from exp.utils.flatten_dict import flatten_dict
 from src.exp.evaluation.config import Config
+import json
 
 logger = logging.getLogger(__name__)
 config_path = str((Path(__file__).parents[3] / "conf").resolve())
@@ -33,6 +34,20 @@ def main(cfg: Config) -> None:
             evaluation(cfg)
 
 
+def get_most_correct_answer(responses):
+    f1 = load_metrics(['F1'])[0]
+    for response in responses:
+        results = []
+        answers = response['meta_data']['reference_answer']
+        for answer in answers:
+            temp = json.loads(json.dumps(response))
+            temp['meta_data']['reference_answer'] = answer
+            r = [Response.from_dict(temp)]
+            results.append(f1(r).score)
+
+        response['meta_data']['reference_answer'] = answers[results.index(max(results))]
+    return responses
+
 def evaluation(cfg: Config) -> None:
     """Evaluate the QA results with MLflow tracking."""
     flat_config = flatten_dict(cfg)
@@ -45,6 +60,10 @@ def evaluation(cfg: Config) -> None:
 
         # Convert to ResponseDataCollection format
         responses_json = FileManager(list(results_path.glob("inference_log.json"))[0]).load_json()
+
+        if cfg.dataset.multiple_answers:
+            responses_json = get_most_correct_answer(responses_json)
+
         responses = [Response.from_dict(item) for item in responses_json]
 
         logger.info(f"Loaded {len(responses)} responses!")
