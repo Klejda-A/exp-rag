@@ -1,0 +1,5 @@
+,CoQA,Doc2Dial,DoQA (avg),HybriDial,INSCIT,QReCC,QuAC,SQA,TopiOCQA
+No RAG-Single-turn,0.165,0.143,0.067,0.132,0.153,0.160,0.038,0.038,0.120
+No RAG-Multi-turn,0.1888,0.193,0.102,0.218,0.173,0.314,0.081,0.146,0.194
+Gold Oracle,,,,,,,,,0.459
+Base Implementation,,,,,,,,,0.240
