@@ -1,6 +1,8 @@
 qrecc
-known_context: 
+known_context: f1=0.540919 mrr=1
 base_implementation: f1=0.295325 mrr=0.192153
 hybrid_bm25: f1=0.29777 mrr=0.20576
 context_summarization: f1=0.36221 mrr=0.14582
 reranker_rag: f1=0.306355 mrr=0.211115
+hyde_rag: f1=0.361549 mrr=0.476796
+hyde_reranker_rag: f1=0.362024 mrr=0.229793
