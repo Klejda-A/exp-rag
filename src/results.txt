@@ -1,0 +1,6 @@
+qrecc
+known_context: 
+base_implementation: f1=0.295325 mrr=0.192153
+hybrid_bm25: f1=0.29777 mrr=0.20576
+context_summarization: f1=0.36221 mrr=0.14582
+reranker_rag: f1=0.306355 mrr=0.211115
