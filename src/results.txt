@@ -1,8 +1,81 @@
 qrecc
-known_context: f1=0.540919 mrr=1
-base_implementation: f1=0.295325 mrr=0.192153
-hybrid_bm25: f1=0.29777 mrr=0.20576
-context_summarization: f1=0.36221 mrr=0.14582
-reranker_rag: f1=0.306355 mrr=0.211115
-hyde_rag: f1=0.361549 mrr=0.476796
-hyde_reranker_rag: f1=0.362024 mrr=0.229793
+known_context:          f1=0.54091      mrr=1
+base_implementation:    f1=0.295325     mrr=0.192153
+hybrid_bm25:            f1=0.29777      mrr=0.20576
+context_summarization:  f1=0.36221      mrr=0.14582
+reranker_rag:           f1=0.306355     mrr=0.211115
+hyde_rag:               f1=0.361549     mrr=0.476796
+hyde_reranker_rag:      f1=0.362024     mrr=0.229793
+
+
+coqa
+known_context:          f1=0.83926      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
+
+
+inscit
+known_context:          f1=0.37168      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
+
+
+topiocqa
+known_context:          f1=0.59028      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
+
+
+doc2dial
+known_context:          f1=0.37032      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
+
+
+
+doqa
+known_context:          f1=0.38246      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
+
+
+
+sqa
+known_context:          f1=0.69550      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
+
+
+
+quac
+known_context:          f1=0.38028      mrr=1
+base_implementation:    f1=             mrr=
+hybrid_bm25:            f1=             mrr=
+context_summarization:  f1=             mrr=
+reranker_rag:           f1=             mrr=
+hyde_rag:               f1=             mrr=
+hyde_reranker_rag:      f1=             mrr=
