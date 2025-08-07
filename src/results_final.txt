@@ -1,0 +1,86 @@
+coqa
+known_context:          f1=0.83926      mrr=1
+base_implementation:    f1=0.17735      mrr=0.02122     r1=0.00940     r5=0.04547       
+hybrid_bm25:            f1=             mrr=            r1=            r5=       
+context_summarization:  f1=             mrr=            r1=            r5=       
+reranker_rag:           f1=             mrr=            r1=            r5=       
+hyde_rag:               f1=             mrr=            r1=            r5=       
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=       
+base_impl+qr:           f1=             mrr=            r1=            r5=       
+
+
+doc2dial
+known_context:          f1=0.37032      mrr=1
+base_implementation:    f1=0.21860      mrr=0.05285     r1=0.02412     r5=0.11424       
+hybrid_bm25:            f1=             mrr=            r1=            r5=       
+context_summarization:  f1=             mrr=            r1=            r5=       
+reranker_rag:           f1=             mrr=            r1=            r5=       
+hyde_rag:               f1=             mrr=            r1=            r5=       
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=       
+base_impl+qr:           f1=             mrr=            r1=            r5=       
+
+
+doqa
+known_context:          f1=0.38246      mrr=1
+base_implementation:    f1=0.29653      mrr=0.18654     r1=0.08361     r5=0.39960
+hybrid_bm25:            f1=             mrr=            r1=            r5=
+context_summarization:  f1=             mrr=            r1=            r5=
+reranker_rag:           f1=             mrr=            r1=            r5=
+hyde_rag:               f1=             mrr=            r1=            r5=
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=
+base_impl+qr:           f1=             mrr=            r1=            r5=
+
+
+inscit
+known_context:          f1=0.37168      mrr=1
+base_implementation:    f1=0.21635      mrr=0.13436     r1=0.05378     r5=0.28884       
+hybrid_bm25:            f1=             mrr=            r1=            r5=       
+context_summarization:  f1=             mrr=            r1=            r5=       
+reranker_rag:           f1=             mrr=            r1=            r5=       
+hyde_rag:               f1=             mrr=            r1=            r5=       
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=       
+base_impl+qr:           f1=             mrr=            r1=            r5=       
+
+
+qrecc
+known_context:          f1=0.54091      mrr=1
+base_implementation:    f1=0.29635      mrr=0.11971     r1=0.05199     r5=0.24417
+hybrid_bm25:            f1=             mrr=            r1=            r5=
+context_summarization:  f1=             mrr=            r1=            r5=
+reranker_rag:           f1=             mrr=            r1=            r5=
+hyde_rag:               f1=             mrr=            r1=            r5=
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=
+base_impl+qr:           f1=             mrr=            r1=            r5=
+
+
+quac
+known_context:          f1=0.38028      mrr=1
+base_implementation:    f1=0.17785      mrr=0.01425     r1=0.00367     r5=0.03892
+hybrid_bm25:            f1=             mrr=            r1=            r5=
+context_summarization:  f1=             mrr=            r1=            r5=
+reranker_rag:           f1=             mrr=            r1=            r5=
+hyde_rag:               f1=             mrr=            r1=            r5=
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=
+base_impl+qr:           f1=             mrr=            r1=            r5=
+
+
+sqa
+known_context:          f1=0.69550      mrr=1
+base_implementation:    f1=0.31201      mrr=0.03986     r1=0.01793     r5=0.08964
+hybrid_bm25:            f1=             mrr=            r1=            r5=
+context_summarization:  f1=             mrr=            r1=            r5=
+reranker_rag:           f1=             mrr=            r1=            r5=
+hyde_rag:               f1=             mrr=            r1=            r5=
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=
+base_impl+qr:           f1=             mrr=            r1=            r5=
+
+
+topiocqa
+known_context:          f1=0.59028      mrr=1
+base_implementation:    f1=0.26462      mrr=0.02417     r1=0.00835     r5=0.05648       
+hybrid_bm25:            f1=             mrr=            r1=            r5=       
+context_summarization:  f1=             mrr=            r1=            r5=       
+reranker_rag:           f1=             mrr=            r1=            r5=       
+hyde_rag:               f1=             mrr=            r1=            r5=       
+hyde_reranker_rag:      f1=             mrr=            r1=            r5=       
+base_impl+qr:           f1=             mrr=            r1=            r5=       
