@@ -13,6 +13,7 @@ from encourage.llm import BatchInferenceRunner
 from encourage.prompts import PromptCollection
 from encourage.prompts.context import Context
 from encourage.prompts.meta_data import MetaData
+from encourage.prompts.context import Document
 from vllm import SamplingParams
 
 from exp.evaluation.config import Config
@@ -22,35 +23,51 @@ from exp.utils.flatten_dict import flatten_dict
 
 config_path = str((Path(__file__).parents[3] / "conf").resolve())
 
-def prepare_conversation_history(messages):
+def prepare_conversation_history(messages, is_multi_turn=True):
+    if is_multi_turn == False:
+        return "User: " + messages[-1]["content"]
+
     if len(messages) == 1:
-        return("Question: " + messages[0]["content"])
-    
-    history = "Conversation: "
+        return "User: " + messages[0]["content"]
+
+    history = "Conversation history: "
+    # history = ""
     for i in range(len(messages)):
         if messages[i]["role"] == "user":
             if i < (len(messages) - 1):
-                history = history + "\n " + messages[i]["content"] + " : "
+                history = history + " \n\nUser:" + messages[i]["content"]
             else:
-                history = history + "\n \n Question: " + messages[i]["content"]
+                history = history + "\n\nUser: " + messages[i]["content"]
         else:
-            history = history + messages[i]["content"]
-    return(history)
+            history = history + "\nAssistant: " + messages[i]["content"]
+    return history
 
 
-def prepare_data(df: pd.DataFrame) -> tuple[list, list]:
+def prepare_data(df: pd.DataFrame, multiple_answers) -> tuple[list, list]:
     """Prepare data for the inference runner."""
     meta_datas = []
     contexts = []
+    ground_truth_doc = Document(content="no content", meta_data=MetaData({"title": "no title"}))
     for _, row in df.iterrows():
-        meta_data = MetaData(
-            {
-                "question": row["messages"][-1]["content"],
-                "reference_answer": row["answers"][0],
-                "conversation_history": prepare_conversation_history(row["messages"]),
-                #"ground_truth": list({d["passage_id"]: d["ctx"] for d in reversed(row["ground_truth_ctx"])}.values())[::-1],
-            }
-        )
+        if multiple_answers:
+            meta_data = MetaData(
+                {
+                    "question": row["messages"][-1]["content"],
+                    "reference_answer": list(row["answers"]),
+                    "conversation_history": prepare_conversation_history(row["messages"]),
+                    "reference_document": ground_truth_doc,
+                }
+            )
+        else:
+            meta_data = MetaData(
+                {
+                    "question": row["messages"][-1]["content"],
+                    "reference_answer": row["answers"][0],
+                    "conversation_history": prepare_conversation_history(row["messages"]),
+                    "reference_document": ground_truth_doc,
+                }
+            )
+
         meta_datas.append(meta_data)
         context = Context.from_documents(
             {
@@ -61,22 +78,13 @@ def prepare_data(df: pd.DataFrame) -> tuple[list, list]:
     return meta_datas, contexts
 
 
-def get_dataset_split(name):
-    print(name)
-    if name in ["coqa", "inscit", "topiocqa"]:
-        return("dev")
-    elif name == "convfinqa":
-        return("validation")
-    else:
-        return("test")
-
 @hydra.main(version_base=None, config_path=config_path, config_name="defaults")
 def main(cfg: Config) -> None:
     """Main function for evaluation of QA datasets."""
     # Load dataset from Huggingface
     load_dotenv(".env")
     
-    qa_dataset = load_dataset(cfg.dataset.name, cfg.dataset.subset, split=get_dataset_split(cfg.dataset.subset)).to_pandas()
+    qa_dataset = load_dataset(cfg.dataset.name, cfg.dataset.subset, split=cfg.dataset.split).to_pandas()
 
     litellm._logging._disable_debugging()
     mlflow.openai.autolog()
@@ -103,13 +111,13 @@ def main(cfg: Config) -> None:
 
         with mlflow.start_span(name="root"):
 
-            meta_datas, contexts = prepare_data(qa_dataset)
+            meta_datas, contexts = prepare_data(qa_dataset, cfg.dataset.multiple_answers)
 
             prompt_collection = PromptCollection.create_prompts(
                 sys_prompts=sys_prompt,
-                user_prompts=[prepare_conversation_history(row) for row in qa_dataset["messages"]],
+                user_prompts=[prepare_conversation_history(row, True) for row in qa_dataset["messages"]],
                 meta_datas=meta_datas,
-                template_name=cfg.template_name,
+                template_name="./src/exp/prompts/templates/version_v1.j2",
             )
             responses = runner.run(prompt_collection)
             #responses.print_response_summary()

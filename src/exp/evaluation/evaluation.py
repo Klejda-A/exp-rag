@@ -6,18 +6,79 @@ from pathlib import Path
 import hydra
 import mlflow
 from encourage.llm import BatchInferenceRunner, Response
+from encourage.llm.response_wrapper import ResponseWrapper
 from encourage.metrics import Metric, MetricOutput
 from vllm import SamplingParams
+from typing import Any
 
 from exp.evaluation.factory_helper import load_metrics
 from exp.utils.file_manager import FileManager
 from exp.utils.flatten_dict import flatten_dict
 from src.exp.evaluation.config import Config
 import json
+import numpy as np
 
 logger = logging.getLogger(__name__)
 config_path = str((Path(__file__).parents[3] / "conf").resolve())
 
+class F1_Individual(Metric):
+    """Computes the F1 score for the generated answers."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="f1",
+            description="F1 score for the generated answers",
+            required_meta_data=["reference_answer"],
+        )
+
+        self.metric = self.load_metric()
+
+    def load_metric(self) -> Any:
+        """Loads the F1 metric."""
+        from evaluate import load
+
+        return load("squad_v2")
+
+    def __call__(self, responses: ResponseWrapper) -> MetricOutput:
+        """Calls the metric calculation."""
+        self.validate_nested_keys(responses)
+        # Initialize empty lists for formatted predictions and references
+        formatted_predictions = []
+        formatted_references = []
+
+        # Use zip to iterate over predictions and references
+        for i, r in enumerate(responses):
+            formatted_predictions.append(
+                {
+                    "id": str(i),
+                    "prediction_text": r.response,
+                    "no_answer_probability": 0.0,
+                }
+            )
+            formatted_references.append(
+                {
+                    "id": str(i),
+                    "answers": [{"text": str(r.meta_data["reference_answer"]), "answer_start": 0}],
+                }
+            )
+
+        # Call the compute function with formatted data
+        output = []
+        for pred, ref in zip(formatted_predictions, formatted_references):
+            score = self.metric.compute(predictions=[pred], references=[ref])
+            output.append(score["f1"])
+        
+        # output = self.metric.compute(
+        #     predictions=formatted_predictions,
+        #     references=formatted_references,
+        # )
+
+        if output is None:
+            return MetricOutput(score=0.0, raw=[])
+        return MetricOutput(
+            score=float(np.mean(output) / 100), raw=output
+        )
+    
 
 @hydra.main(version_base=None, config_path=config_path, config_name="defaults")
 def main(cfg: Config) -> None:
@@ -76,8 +137,12 @@ def evaluation(cfg: Config) -> None:
     # Load metrics
     metrics: list[Metric] = load_metrics(cfg.metrics, runner)
     metrics_log = []
+    f1 = F1_Individual()
     for metric in metrics:
-        result: MetricOutput = metric(responses)
+        if metric.name == "f1":
+            result: MetricOutput = f1(responses)
+        else:
+            result: MetricOutput = metric(responses)
         metrics_log.append({metric.name: result.to_dict()})
 
         mlflow.log_metric(metric.name, result.score)
