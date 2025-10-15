@@ -33,6 +33,7 @@ def main(cfg: Config) -> None:
     # Ensure permissions for the cache directory
     os.chmod(HUGGINGFACE_CACHE_DIR, 0o777)
 
+    print("quant" + str(cfg.model.quantization))
     # Construct the Docker command
     vllm_command = [
         "vllm serve",
@@ -42,8 +43,6 @@ def main(cfg: Config) -> None:
         "--api-key",
         API_KEY,
         "--enable-auto-tool-choice",
-        "--allowed-local-media-path",
-        f"{cfg.dataset.input_dir}/{cfg.dataset.split}/",
         "--tool-call-parser",
         cfg.model.tool_call_parser,
         "--gpu-memory-utilization",
@@ -54,8 +53,6 @@ def main(cfg: Config) -> None:
         str(cfg.model.max_model_len),
         "--tensor-parallel-size",
         str(cfg.model.tensor_parallel_size),
-        "--quantization",
-        str(cfg.model.quantization),
     ]
 
     # Execute the serve command
