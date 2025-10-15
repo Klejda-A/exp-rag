@@ -1,4 +1,0 @@
-name: ChanceFocus/flare-convfinqa
-split: valid
-input_dir: /ltstorage/home/2alushi/exp-rag/data
-sys_prompt_path: ./src/exp/prompts/sys_prompts/rag_prompt_multi_turn.txt
