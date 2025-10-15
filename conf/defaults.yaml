@@ -4,11 +4,10 @@ hydra:
     dir: outputs/${now:%y-%m-%d_%H:%M}_${model.model_name_short}
 
 defaults:
-  - model: llama3.2
-  - dataset: exprag
+  - model: llama3
+  - dataset: coqa
   - mlflow: exprag
   - vector_db: chroma
-  - rag: known_context
   - _self_
 
 metrics:
@@ -20,11 +19,18 @@ metrics:
       rouge_type: rouge1
   - ROUGE:
       rouge_type: rougeL
-  - ExactMatch
+  - RecallAtK:
+      k: 1
+  - RecallAtK:
+      k: 3
+  - RecallAtK:
+      k: 5
+  - MeanReciprocalRank
   - GeneratedAnswerLength
   - ReferenceAnswerLength
+  - ContextLength
 
 output_folder: outputs/${now:%y-%m-%d_%H:%M}_${model.model_name_short}
-template_name: ./src/exp/prompts/templates/version_v1.j2
+template_name: ./src/exp/prompts/templates/rag_temp.j2
 base_url: http://localhost:${vllm_port}/v1/
 vllm_port: 18123
