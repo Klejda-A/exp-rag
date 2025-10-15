@@ -27,6 +27,7 @@ __pycache__/
 # Logs and outputs
 *.log
 src/outputs/*
+mlruns/*
 
 ## Data folder
 raw
