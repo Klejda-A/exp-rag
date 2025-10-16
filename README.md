@@ -46,7 +46,7 @@ To run the execution of the model you can use the following command:
 uv run src/scivqa/evaluation/execution_rag.py
 ```
 
-This has the default Known Context method which can be changed in the `execution_rag.py` file.
+This has the default Base Implementation method which can be changed in the `execution_rag.py` file.
 
 If something broke in the evaluation you can use the following command to run the evaluation again:
 

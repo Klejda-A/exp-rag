@@ -32,7 +32,103 @@ _quotes_re = re.compile(r'"([^"]*)"')
 _whitespace_re = re.compile(r"\s+")
 
 
+@hydra.main(version_base=None, config_path=config_path, config_name="defaults")
+def main(cfg: Config) -> None:
+    """Main function for execution of RAG methods"""
+    # Load dataset from Huggingface
+    load_dotenv(".env")
+
+    qa_dataset = load_dataset(
+        cfg.dataset.name, cfg.dataset.subset, split=cfg.dataset.split
+    ).to_pandas()
+
+    litellm._logging._disable_debugging()
+    mlflow.openai.autolog()
+
+    sampling_params = SamplingParams(
+        temperature=cfg.model.temperature, max_tokens=cfg.model.max_tokens
+    )
+    runner = BatchInferenceRunner(sampling_params, cfg.model.model_name, base_url=cfg.base_url)
+    sys_prompt = FileManager(cfg.dataset.sys_prompt_path).read()
+
+    # Set RAG method
+    rag_methods = ['known_context', 'base_implementation', 'hybrid_bm25', "summarization", 
+                   'summarization_context', 'reranker_rag', 'hyde_rag', 'hyde_reranker_rag']
+    
+    rag_method_nr = 1
+    rewrite_query = False
+
+    ## Run the Inference
+    mlflow.set_tracking_uri(cfg.mlflow.uri)
+    mlflow.set_experiment(experiment_name=cfg.mlflow.experiment_id)
+
+    with mlflow.start_run():
+        # Log identifying parameters for mlflow
+        mlflow.log_params(flatten_dict(cfg))
+        mlflow.log_params({"dataset_size": len(qa_dataset)})
+        mlflow.log_params({"rag_method": rag_methods[rag_method_nr]})
+        mlflow.log_input(
+            mlflow.data.pandas_dataset.from_pandas(qa_dataset, name=cfg.dataset.name),
+            context="inference",
+        )        
+
+        with mlflow.start_span(name="root"):
+            meta_datas, contexts = prepare_data(qa_dataset, cfg)
+
+            # Set RAG parameters
+            top_k = 5   # Contexts retrieved
+            batch_size = 3000
+            multi_turn_user = True  # Include conversation history in main prompt
+            multi_turn_context = True   # Include conversation history in retrieval prompt
+
+            match rag_method_nr:
+                case 0:
+                    rag = known_context_rag(contexts, cfg, top_k)
+                case 1:
+                    rag = base_implementation_rag(contexts, cfg, top_k, batch_size)
+                case 2:
+                    rag = hybrid_bm25_rag(contexts, cfg, top_k, 0.5, 0.5, batch_size)
+                case 3:
+                    rag = summarization_rag(contexts, cfg, top_k, runner)
+                case 4:
+                    rag = summarization_context_rag(contexts, cfg, top_k, runner)
+                case 5:
+                    rag = reranker_rag(contexts, cfg, top_k, runner, 3, batch_size)
+                case 6:
+                    rag = hyde_rag(contexts, cfg, top_k, runner, batch_size)
+                case 7:
+                    rag = hyde_reranker_rag(contexts, cfg, top_k, runner, 5, batch_size)
+
+            user_prompts = [prepare_conversation_history(row, multi_turn_user) for row in qa_dataset["messages"]]
+            if rewrite_query:
+                user_prompts = query_rewriting_rag(cfg, runner, user_prompts)
+
+            responses = rag.run(
+                sys_prompt=sys_prompt,
+                runner=runner,
+                user_prompts=user_prompts,
+                meta_datas=meta_datas,
+                retrieval_queries=[prepare_conversation_history(row, multi_turn_context) for row in qa_dataset["messages"]],
+            )
+
+        # Save the output 
+        json_dump = [response.to_dict(truncated=False) for response in responses.response_data]
+
+        FileManager(cfg.output_folder + "/inference_log.json").dump_json(
+            json_dump, pydantic_encoder=True
+        )
+        json_dump = [flatten_dict(response.to_dict(truncated=True)) for response in responses.response_data]
+
+        active_run = mlflow.active_run()
+        run_name = active_run.info.run_name if active_run else "responses"
+        mlflow.log_table(data=pd.DataFrame(json_dump), artifact_file=f"{run_name}.json")
+
+        # Evaluate the retrieval
+        evaluation(cfg)
+
+
 def clean_text(text):
+    """Clean text of formatting characters"""
     text = _escape_re.sub(" ", text)
     text = _quotes_re.sub(r"\1", text)
     text = _whitespace_re.sub(" ", text).strip()
@@ -40,6 +136,7 @@ def clean_text(text):
 
 
 def prepare_conversation_history(messages, is_multi_turn=True):
+    """Format the conversation structure for the prompt"""
     if is_multi_turn == False:
         return "User: " + messages[-1]["content"]
 
@@ -47,7 +144,6 @@ def prepare_conversation_history(messages, is_multi_turn=True):
         return "User: " + messages[0]["content"]
 
     history = "Conversation history: "
-    # history = ""
     for i in range(len(messages)):
         if messages[i]["role"] == "user":
             if i < (len(messages) - 1):
@@ -60,48 +156,28 @@ def prepare_conversation_history(messages, is_multi_turn=True):
 
 
 def prepare_data(df: pd.DataFrame, cfg) -> tuple[list, list]:
-    """Prepare data for the inference runner."""
+    """Prepare metadata for the inference runner"""
     meta_datas = []
     contexts = []
     seen_contexts = set()
     for _, row in df.iterrows():
-        # ground_truth_doc = Document(
-        #     content=ground_truth, meta_data=MetaData({"title": titles[0]})
-        # )
-        # print(ground_truth_doc)
-        # seen_contexts.add(ground_truth)
-        # print(seen_contexts)
-        # contexts.append(ground_truth_doc)
 
-        # known_context rag only
         ground_truth, titles = prepare_ground_truth(cfg, row)
         ground_truth = clean_text(ground_truth[0])
-        if ground_truth not in seen_contexts:
-            ground_truth_doc = Document(
+        ground_truth_doc = Document(
                     content=ground_truth, meta_data=MetaData({"title": titles[0]})
                 )
-            contexts.append(ground_truth_doc)
-        else:
-            ground_truth_doc = next(doc for doc in contexts if doc.content == ground_truth)
+        contexts.append(ground_truth_doc)
+        seen_contexts.add(ground_truth)
 
         # used for all rag methods excluding known_context
         for ctx in row["ctxs"]:
             text = clean_text(ctx["text"])
-            if text not in seen_contexts:
+            if (text not in seen_contexts):
                 contexts.append(
                     Document(content=text, meta_data=MetaData({"title": ctx["title"]}))
                 )
-                seen_contexts.add(text)
-
-        # ground_truth, titles = prepare_ground_truth(cfg, row)
-        # ground_truth = clean_text(ground_truth[0])
-        # if not [doc for doc in contexts if doc.content == ground_truth]:
-        #     ground_truth_doc = Document(
-        #         content=ground_truth, meta_data=MetaData({"title": titles[0]})
-        #     )
-        #     contexts.append(ground_truth_doc)
-        # else:
-        #     ground_truth_doc = [doc for doc in contexts if doc.content == ground_truth][0]
+            seen_contexts.add(text)
 
         if cfg.dataset.multiple_answers:
             meta_data = MetaData(
@@ -124,17 +200,11 @@ def prepare_data(df: pd.DataFrame, cfg) -> tuple[list, list]:
 
         meta_datas.append(meta_data)
 
-        # context=""
-        # for ctx in row["ctxs"]:
-        #     text = ctx["text"]
-        #     if text not in seen_contexts:
-        #         context = context + text + " "
-        #         seen_contexts.add(text)
-        # contexts.append(Document(content=context, meta_data=MetaData({"title": ctx.get("title")})))
     return meta_datas, contexts
 
 
 def prepare_ground_truth(cfg, row):
+    """Retrieve ground truth context"""
     ctxs = []
     titles = []
     if "ground_truth_ctx" in row:
@@ -286,110 +356,6 @@ def query_rewriting_rag(cfg, runner, user_prompts):
     responses = [r.response for r in responses]
 
     return responses
-
-@hydra.main(version_base=None, config_path=config_path, config_name="defaults")
-def main(cfg: Config) -> None:
-    """Main function for evaluation of QA datasets."""
-    # Load dataset from Huggingface
-    load_dotenv(".env")
-
-    qa_dataset = load_dataset(
-        cfg.dataset.name, cfg.dataset.subset, split=cfg.dataset.split
-    ).to_pandas()
-
-    litellm._logging._disable_debugging()
-    mlflow.openai.autolog()
-
-    sampling_params = SamplingParams(
-        temperature=cfg.model.temperature, max_tokens=cfg.model.max_tokens
-    )
-    runner = BatchInferenceRunner(sampling_params, cfg.model.model_name, base_url=cfg.base_url)
-    sys_prompt = FileManager(cfg.dataset.sys_prompt_path).read()
-
-    rag_methods = ['known_context', 'base_implementation', 'hybrid_bm25', "summarization", 
-                   'summarization_context', 'reranker_rag', 'hyde_rag', 'hyde_reranker_rag']
-    
-    rag_method_nr = 1
-    rewrite_query = False
-
-    ## Run the Inference
-    mlflow.set_tracking_uri(cfg.mlflow.uri)
-    mlflow.set_experiment(experiment_name=cfg.mlflow.experiment_id)
-
-    with mlflow.start_run():
-        mlflow.log_params(flatten_dict(cfg))
-        mlflow.log_params({"dataset_size": len(qa_dataset)})
-        mlflow.log_params({"rag_method": rag_methods[rag_method_nr]})
-        mlflow.log_input(
-            mlflow.data.pandas_dataset.from_pandas(qa_dataset, name=cfg.dataset.name),
-            context="inference",
-        )        
-
-        with mlflow.start_span(name="root"):
-            meta_datas, contexts = prepare_data(qa_dataset, cfg)
-
-            context_analysis(contexts, [i["question"]for i in meta_datas],[i["reference_answer"] for i in meta_datas], [i["conversation_history"]for i in meta_datas], AutoTokenizer.from_pretrained(cfg.model.model_name))
-            # conversation_sequence([i["conversation_history"]for i in meta_datas], cfg.dataset.subset)
-            top_k = 5
-            batch_size = 3000
-            multi_turn_user = True
-            multi_turn_context = True
-
-            match rag_method_nr:
-                case 0:
-                    rag = known_context_rag(contexts, cfg, top_k)
-                case 1:
-                    rag = base_implementation_rag(contexts, cfg, top_k, batch_size)
-                case 2:
-                    rag = hybrid_bm25_rag(contexts, cfg, top_k, 0.5, 0.5, batch_size)
-                case 3:
-                    rag = summarization_rag(contexts, cfg, top_k, runner)
-                case 4:
-                    rag = summarization_context_rag(contexts, cfg, top_k, runner)
-                case 5:
-                    rag = reranker_rag(contexts, cfg, top_k, runner, 3, batch_size)
-                case 6:
-                    rag = hyde_rag(contexts, cfg, top_k, runner, batch_size)
-                case 7:
-                    rag = hyde_reranker_rag(contexts, cfg, top_k, runner, 5, batch_size)
-
-
-            # rag = known_context_rag(contexts, cfg, top_k)
-            # rag = base_implementation_rag(contexts, cfg, top_k, batch_size)
-            # rag = hybrid_bm25_rag(contexts, cfg, top_k, 0.5, 0.5, batch_size)
-            # rag = summarization_context_rag(contexts, cfg, top_k, runner)
-            # rag = reranker_rag(contexts, cfg, top_k, runner, 2, batch_size)
-            # rag = hyde_rag(contexts, cfg, top_k, runner, batch_size)
-            # rag = hyde_reranker_rag(contexts, cfg, top_k, runner, 5, batch_size)
-            # rag = self_rag(contexts, cfg, top_k, runner, batch_size)
-
-            user_prompts = [prepare_conversation_history(row, multi_turn_user) for row in qa_dataset["messages"]]
-            if rewrite_query:
-                user_prompts = query_rewriting_rag(cfg, runner, user_prompts)
-
-            responses = rag.run(
-                sys_prompt=sys_prompt,
-                runner=runner,
-                user_prompts=user_prompts,
-                meta_datas=meta_datas,
-                retrieval_queries=[prepare_conversation_history(row, multi_turn_context) for row in qa_dataset["messages"]],
-            )
-
-
-        # Save the output to hydra folder0
-        json_dump = [response.to_dict(truncated=False) for response in responses.response_data]
-
-        FileManager(cfg.output_folder + "/inference_log.json").dump_json(
-            json_dump, pydantic_encoder=True
-        )
-        json_dump = [flatten_dict(response.to_dict(truncated=True)) for response in responses.response_data]
-
-        active_run = mlflow.active_run()
-        run_name = active_run.info.run_name if active_run else "responses"
-        mlflow.log_table(data=pd.DataFrame(json_dump), artifact_file=f"{run_name}.json")
-
-        # Evaluate the retrieval
-        evaluation(cfg)
 
 
 if __name__ == "__main__":
