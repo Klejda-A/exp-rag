@@ -36,15 +36,17 @@ When using this template you have to declare all your configuration parameters i
 To run a LLM you can use config from the launch.json file. If you want to run it without it you can use the following command:
 
 ```bash
- CUDA_VISIBLE_DEVICES=1 uv run start_vllm_server_as_process.py model=qwen2-7B  
+ CUDA_VISIBLE_DEVICES=1 uv run start_vllm_server_as_process.py model=llama3  
 ```
 
 ### Run Evaluation
 To run the execution of the model you can use the following command:
 
 ```bash
-uv run src/scivqa/evaluation/execution.py
+uv run src/scivqa/evaluation/execution_rag.py
 ```
+
+This has the default Known Context method which can be changed in the `execution_rag.py` file.
 
 If something broke in the evaluation you can use the following command to run the evaluation again:
 
