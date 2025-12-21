@@ -2,5 +2,4 @@ name: nvidia/ChatRAG-Bench
 subset: topiocqa
 split: dev
 multiple_answers: true
-input_dir: /ltstorage/home/2alushi/exp-rag/data/topiocqa
 sys_prompt_path: ./src/exp/prompts/sys_prompts/topiocqa_prompt.txt

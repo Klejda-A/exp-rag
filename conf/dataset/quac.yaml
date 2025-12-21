@@ -2,5 +2,4 @@ name: nvidia/ChatRAG-Bench
 subset: quac
 split: test
 multiple_answers: false
-input_dir: /ltstorage/home/2alushi/exp-rag/data/quac
 sys_prompt_path: ./src/exp/prompts/sys_prompts/quac_prompt.txt

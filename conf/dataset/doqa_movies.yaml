@@ -2,5 +2,4 @@ name: nvidia/ChatRAG-Bench
 subset: doqa_movies
 split: test
 multiple_answers: true
-input_dir: /ltstorage/home/2alushi/exp-rag/data/doqa_movies
 sys_prompt_path: ./src/exp/prompts/sys_prompts/doqa_prompt.txt

@@ -2,5 +2,4 @@ name: nvidia/ChatRAG-Bench
 subset: sqa
 split: test
 multiple_answers: true
-input_dir: /ltstorage/home/2alushi/exp-rag/data/sqa
 sys_prompt_path: ./src/exp/prompts/sys_prompts/sqa_prompt.txt

@@ -2,5 +2,4 @@ name: nvidia/ChatRAG-Bench
 subset: inscit
 split: dev
 multiple_answers: false
-input_dir: /ltstorage/home/2alushi/exp-rag/data/inscit
 sys_prompt_path: ./src/exp/prompts/sys_prompts/inscit_prompt.txt

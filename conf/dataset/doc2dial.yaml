@@ -2,5 +2,4 @@ name: nvidia/ChatRAG-Bench
 subset: doc2dial
 split: test
 multiple_answers: false
-input_dir: /ltstorage/home/2alushi/exp-rag/data/doc2dial
 sys_prompt_path: ./src/exp/prompts/sys_prompts/doc2dial_prompt.txt
