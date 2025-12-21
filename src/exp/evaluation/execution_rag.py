@@ -56,7 +56,7 @@ def main(cfg: Config) -> None:
                    'summarization_context', 'reranker_rag', 'hyde_rag', 'hyde_reranker_rag']
     
     rag_method_nr = 1
-    rewrite_query = False
+    rewrite_query = True
 
     ## Run the Inference
     mlflow.set_tracking_uri(cfg.mlflow.uri)
@@ -75,11 +75,16 @@ def main(cfg: Config) -> None:
         with mlflow.start_span(name="root"):
             meta_datas, contexts = prepare_data(qa_dataset, cfg)
 
+            # context_analysis(contexts, ["questions"], ["answers"], [], AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct"))
+
             # Set RAG parameters
             top_k = 5   # Contexts retrieved
             batch_size = 3000
             multi_turn_user = True  # Include conversation history in main prompt
             multi_turn_context = True   # Include conversation history in retrieval prompt
+
+            prompts = [prepare_conversation_history(row, multi_turn_user) for row in qa_dataset["messages"]]
+            conversation_sequence(prompts, cfg.dataset.name)
 
             match rag_method_nr:
                 case 0:
@@ -164,11 +169,12 @@ def prepare_data(df: pd.DataFrame, cfg) -> tuple[list, list]:
 
         ground_truth, titles = prepare_ground_truth(cfg, row)
         ground_truth = clean_text(ground_truth[0])
-        ground_truth_doc = Document(
-                    content=ground_truth, meta_data=MetaData({"title": titles[0]})
-                )
-        contexts.append(ground_truth_doc)
-        seen_contexts.add(ground_truth)
+        if (ground_truth not in seen_contexts):
+            ground_truth_doc = Document(content=ground_truth, meta_data=MetaData({"title": titles[0]}))
+            contexts.append(ground_truth_doc)
+            seen_contexts.add(ground_truth)
+        else:
+            ground_truth_doc = next((d for d in contexts if d.content == ground_truth), None)
 
         # used for all rag methods excluding known_context
         for ctx in row["ctxs"]:
@@ -177,7 +183,7 @@ def prepare_data(df: pd.DataFrame, cfg) -> tuple[list, list]:
                 contexts.append(
                     Document(content=text, meta_data=MetaData({"title": ctx["title"]}))
                 )
-            seen_contexts.add(text)
+                seen_contexts.add(text)
 
         if cfg.dataset.multiple_answers:
             meta_data = MetaData(
