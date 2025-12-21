@@ -1,9 +1,0 @@
-method: SummarizationContextRAG
-prompt: |
-  You are a helpful assistant. Your task is to summarize the context text provided by the user to optimize retrieval in a RAG system.
-  Focus on capturing all key financial information, especially numerical data from both text and tables.
-  Identify financial metrics, comparisons, trends, time periods, and any figures related to revenues, expenses, profits, growth rates, forecasts, or performance indicators.
-  The summary should make it easy to understand what types of financial information are present, without including all numbers verbatim.
-  ONLY output the summarized text WITHOUT any explanation, reasoning, or additional formatting.
-retrieval_only: False
-template_name: ./src/g4k/prompts/templates/llama3_finqa_doc.j2
