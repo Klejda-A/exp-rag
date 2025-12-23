@@ -45,3 +45,5 @@ docker/qdrant/qdrant_store
 outputs/*
 wandb/*
 ## Test Notebooks & Python files
+
+multirun/*

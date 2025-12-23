@@ -1,4 +1,7 @@
-Context: {{ documents.content }}
+Context: 
+{% for document in documents %}
+{{document.content}}
+{% endfor %}
 
 {{ user_prompt }}
 

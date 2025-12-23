@@ -8,6 +8,7 @@ defaults:
   - dataset: coqa
   - mlflow: exprag
   - vector_db: chroma
+  - rag: base
   - _self_
 
 metrics:
@@ -29,6 +30,7 @@ metrics:
   - GeneratedAnswerLength
   - ReferenceAnswerLength
   - ContextLength
+  - MeanAveragePrecision
 
 output_folder: outputs/${now:%y-%m-%d_%H:%M}_${model.model_name_short}
 template_name: ./src/exp/prompts/templates/rag_temp.j2

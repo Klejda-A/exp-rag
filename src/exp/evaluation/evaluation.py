@@ -1,25 +1,26 @@
 """Module for evaluation of retrieval and QA results with MLflow tracking."""
 
+import json
 import logging
 from pathlib import Path
+from typing import Any
 
 import hydra
 import mlflow
+import numpy as np
 from encourage.llm import BatchInferenceRunner, Response
 from encourage.llm.response_wrapper import ResponseWrapper
 from encourage.metrics import Metric, MetricOutput
 from vllm import SamplingParams
-from typing import Any
 
+from exp.evaluation.config import Config
 from exp.evaluation.factory_helper import load_metrics
 from exp.utils.file_manager import FileManager
 from exp.utils.flatten_dict import flatten_dict
-from src.exp.evaluation.config import Config
-import json
-import numpy as np
 
 logger = logging.getLogger(__name__)
 config_path = str((Path(__file__).parents[3] / "conf").resolve())
+
 
 class F1_Individual(Metric):
     """Computes the F1 score for the generated answers."""
@@ -67,7 +68,7 @@ class F1_Individual(Metric):
         for pred, ref in zip(formatted_predictions, formatted_references):
             score = self.metric.compute(predictions=[pred], references=[ref])
             output.append(score["f1"])
-        
+
         # output = self.metric.compute(
         #     predictions=formatted_predictions,
         #     references=formatted_references,
@@ -75,10 +76,8 @@ class F1_Individual(Metric):
 
         if output is None:
             return MetricOutput(score=0.0, raw=[])
-        return MetricOutput(
-            score=float(np.mean(output) / 100), raw=output
-        )
-    
+        return MetricOutput(score=float(np.mean(output) / 100), raw=output)
+
 
 @hydra.main(version_base=None, config_path=config_path, config_name="defaults")
 def main(cfg: Config) -> None:
@@ -96,18 +95,19 @@ def main(cfg: Config) -> None:
 
 
 def get_most_correct_answer(responses):
-    f1 = load_metrics(['F1'])[0]
+    f1 = load_metrics(["F1"])[0]
     for response in responses:
         results = []
-        answers = response['meta_data']['reference_answer']
+        answers = response["meta_data"]["reference_answer"]
         for answer in answers:
             temp = json.loads(json.dumps(response))
-            temp['meta_data']['reference_answer'] = answer
+            temp["meta_data"]["reference_answer"] = answer
             r = [Response.from_dict(temp)]
             results.append(f1(r).score)
 
-        response['meta_data']['reference_answer'] = answers[results.index(max(results))]
+        response["meta_data"]["reference_answer"] = answers[results.index(max(results))]
     return responses
+
 
 def evaluation(cfg: Config) -> None:
     """Evaluate the QA results with MLflow tracking."""

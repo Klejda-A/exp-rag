@@ -28,6 +28,7 @@ class Dataset:
     split: str
     sys_prompt_path: str
     input_dir: str
+    subset: str
 
 
 @dataclass
@@ -51,10 +52,7 @@ class VectorDB:
 class RAGConfig:
     """RAG configuration."""
 
-    method: str = ""
-    prompt: str | None = None
-    retrieval_only: bool = False
-    template_name: str = ""
+    rag_method: str
 
 
 @dataclass
