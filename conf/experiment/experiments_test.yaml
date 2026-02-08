@@ -1,0 +1,7 @@
+# @package _global_
+hydra:
+  sweeper:
+    params:
+      rag: summarization_context
+      dataset: doc2dial, quac, doqa_cooking, doqa_movies, doqa_travel, qrecc, quac, sqa
+      dataset.split: test

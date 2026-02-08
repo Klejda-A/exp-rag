@@ -1,0 +1,10 @@
+model_name: "google/gemma-3-27b-it"
+model_name_short: "gemma3-27b-it"
+gpu_memory_utilization: 0.95
+temperature: 0
+max_tokens: 1000
+top_p: 0.95
+max_model_len: 128000
+tensor_parallel_size: 1
+quantization: "None"
+tool_call_parser: llama3_json

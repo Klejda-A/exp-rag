@@ -16,20 +16,28 @@ from encourage.prompts.meta_data import MetaData
 from encourage.rag import (
     BaseRAG,
     BaseRAGConfig,
+    HybridBM25RAG,
     HydeRAG,
     HydeRAGConfig,
     HydeRerankerRAG,
+    KnownContext,
+    KnownContextConfig,
+    NoContext,
+    NoContextConfig,
+    RerankerRAG,
+    RerankerRAGConfig,
     SummarizationContextRAG,
     SummarizationContextRAGConfig,
     SummarizationRAG,
     SummarizationRAGConfig,
 )
-from encourage.rag.base.config import HydeRerankerConfig
+from encourage.rag.base.config import HybridBM25RAGConfig, HydeRerankerConfig
 from vllm import SamplingParams
 
 from exp.evaluation.config import Config
 from exp.evaluation.dataset_analysis import conversation_sequence
 from exp.evaluation.evaluation import main as evaluation
+from exp.evaluation.query_rewriting import QueryRewritingRAG
 from exp.utils.file_manager import FileManager
 from exp.utils.flatten_dict import flatten_dict
 
@@ -84,23 +92,44 @@ def main(cfg: Config) -> None:
             ]
             conversation_sequence(prompts, cfg.dataset.name)
 
+            user_prompts = [
+                prepare_conversation_history(row, multi_turn_user) for row in qa_dataset["messages"]
+            ]
+
+            print(contexts[0])
+
             match cfg.rag.rag_method:
                 case "base":
                     rag = base_implementation_rag(contexts, cfg, cfg.vector_db.top_k, batch_size)
-                case "summarization":
-                    rag = summarization_rag(contexts, cfg, cfg.vector_db.top_k, runner)
-                case "summarization_context":
-                    rag = summarization_context_rag(contexts, cfg, cfg.vector_db.top_k, runner)
-                case "hyde":
-                    rag = hyde_rag(contexts, cfg, cfg.vector_db.top_k, runner, batch_size)
+                case "hybrid_bm25":
+                    rag = hybrid_bm25_rag(
+                        contexts,
+                        cfg,
+                        cfg.vector_db.top_k,
+                        alpha=0.5,
+                        beta=0.5,
+                        batch_size=batch_size,
+                    )
                 case "hyde_reranker":
                     rag = hyde_reranker_rag(
                         contexts, cfg, cfg.vector_db.top_k, runner, 5, batch_size
                     )
+                case "hyde":
+                    rag = hyde_rag(contexts, cfg, cfg.vector_db.top_k, runner, batch_size)
+                case "known_context":
+                    rag = known_context_rag(contexts, cfg, cfg.vector_db.top_k)
+                case "no_context":
+                    rag = no_context_rag(contexts, cfg, cfg.vector_db.top_k)
+                case "query_rewriting":
+                    rag = base_implementation_rag(contexts, cfg, cfg.vector_db.top_k, batch_size)
+                    user_prompts = query_rewriting_rag(cfg, runner, user_prompts)
+                case "reranker":
+                    rag = reranker_rag(contexts, cfg, cfg.vector_db.top_k, runner, 5, batch_size)
+                case "summarization":
+                    rag = summarization_rag(contexts, cfg, cfg.vector_db.top_k, runner)
+                case "summarization_context":
+                    rag = summarization_context_rag(contexts, cfg, cfg.vector_db.top_k, runner)
 
-            user_prompts = [
-                prepare_conversation_history(row, multi_turn_user) for row in qa_dataset["messages"]
-            ]
             responses = rag.run(
                 sys_prompt=sys_prompt,
                 runner=runner,
@@ -250,34 +279,19 @@ def base_implementation_rag(contexts, cfg, top_k, batch_size=2000):
     return BaseRAG(config=config)
 
 
-def summarization_rag(contexts, cfg, top_k, runner):
-    return SummarizationRAG(
-        SummarizationRAGConfig(
-            context_collection=contexts,
-            template_name="./src/exp/prompts/templates/rag_temp_sum.j2",
-            collection_name=cfg.dataset.subset,
-            embedding_function="sentence-transformers/all-mpnet-base-v2",
-            additional_prompt="Rewrite the context to keep all essential facts and remove only irrelevant or redundant details, without adding new information.",
-            top_k=top_k,
-            runner=runner,
-            retrieval_only=False,
-        )
+def hybrid_bm25_rag(contexts, cfg, top_k, alpha=0.5, beta=0.5, batch_size=2000):
+    config = HybridBM25RAGConfig(
+        context_collection=contexts,
+        template_name=cfg.template_name,
+        collection_name=cfg.dataset.subset,
+        embedding_function="sentence-transformers/all-mpnet-base-v2",
+        top_k=top_k,
+        retrieval_only=False,
+        batch_size_insert=batch_size,
+        alpha=alpha,
+        beta=beta,
     )
-
-
-def summarization_context_rag(contexts, cfg, top_k, runner):
-    return SummarizationContextRAG(
-        SummarizationContextRAGConfig(
-            context_collection=contexts,
-            template_name="./src/exp/prompts/templates/rag_temp_sum.j2",
-            collection_name=cfg.dataset.subset,
-            embedding_function="sentence-transformers/all-mpnet-base-v2",
-            additional_prompt="Rewrite the context to keep all essential facts and remove only irrelevant or redundant details, without adding new information.",
-            top_k=top_k,
-            runner=runner,
-            retrieval_only=False,
-        )
-    )
+    return HybridBM25RAG(config=config)
 
 
 def hyde_rag(contexts, cfg, top_k, runner, batch_size=2000):
@@ -308,6 +322,87 @@ def hyde_reranker_rag(contexts, cfg, top_k, runner, rerank_ratio, batch_size=200
             rerank_ratio=rerank_ratio,
             retrieval_only=False,
             batch_size_insert=batch_size,
+        )
+    )
+
+
+def no_context_rag(context, cfg, top_k):
+    config = NoContextConfig(
+        context_collection=context,
+        template_name=cfg.template_name,
+        collection_name=cfg.dataset.subset,
+        embedding_function="sentence-transformers/all-mpnet-base-v2",
+        top_k=top_k,
+    )
+    return NoContext(config=config)
+
+
+def known_context_rag(contexts, cfg, top_k):
+    config = KnownContextConfig(
+        context_collection=contexts,
+        template_name=cfg.template_name,
+        collection_name=cfg.dataset.subset,
+        embedding_function="sentence-transformers/all-mpnet-base-v2",
+        top_k=top_k,
+        retrieval_only=False,
+    )
+    return KnownContext(config=config)
+
+
+def query_rewriting_rag(cfg, runner, user_prompts):
+    sys_prompt = "Rewrite the last user question to be fully self-contained and clearly answerable. Include only the essential context from the conversation. Do not add information that was not explicitly mentioned. The rewritten question should be short, precise, and reflect exactly what the user wants to know. Output only the rewritten question."
+    rag = QueryRewritingRAG(
+        template_name="./src/exp/prompts/templates/query_rewriting.j2",
+        collection_name=cfg.dataset.subset,
+    )
+
+    responses = rag.run(sys_prompt=sys_prompt, runner=runner, user_prompts=user_prompts)
+    responses = [r.response for r in responses]
+
+    return responses
+
+
+def reranker_rag(contexts, cfg, top_k, runner, rerank_ratio, batch_size=2000):
+    config = RerankerRAGConfig(
+        context_collection=contexts,
+        template_name=cfg.template_name,
+        collection_name=cfg.dataset.subset,
+        embedding_function="sentence-transformers/all-mpnet-base-v2",
+        top_k=top_k,
+        runner=runner,
+        rerank_ratio=rerank_ratio,
+        retrieval_only=False,
+        batch_size_insert=batch_size,
+    )
+    return RerankerRAG(config=config)
+
+
+def summarization_rag(contexts, cfg, top_k, runner):
+    return SummarizationRAG(
+        SummarizationRAGConfig(
+            context_collection=contexts,
+            template_name="./src/exp/prompts/templates/rag_temp_sum.j2",
+            collection_name=cfg.dataset.subset,
+            embedding_function="sentence-transformers/all-mpnet-base-v2",
+            additional_prompt="Rewrite the context to keep all essential facts and remove only irrelevant or redundant details, without adding new information.",
+            top_k=top_k,
+            runner=runner,
+            retrieval_only=False,
+        )
+    )
+
+
+def summarization_context_rag(contexts, cfg, top_k, runner):
+    return SummarizationContextRAG(
+        SummarizationContextRAGConfig(
+            context_collection=contexts,
+            template_name="./src/exp/prompts/templates/rag_temp_sum.j2",
+            collection_name=cfg.dataset.subset,
+            embedding_function="sentence-transformers/all-mpnet-base-v2",
+            additional_prompt="Rewrite the context to keep all essential facts and remove only irrelevant or redundant details, without adding new information.",
+            top_k=top_k,
+            runner=runner,
+            retrieval_only=False,
         )
     )
 
